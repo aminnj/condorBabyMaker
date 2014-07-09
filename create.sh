@@ -47,11 +47,3 @@ sed -i "s,PROXY_FILE,$proxyFile," condorFile
 echo "Submitting $babyName"
 condor_submit condorFile
 
-
-# -rwxr-xr-x  1 namin namin  986 Jul  8 23:04 condorExecutable.sh
-# -rw-rw-r--  1 namin namin  344 Jul  8 23:08 condorFile
-# drwxr-xr-x 11 namin namin 4096 Jun 30 23:20 CORE
-# -rw-r--r--  1 namin namin  750 Jul  8 22:51 doAll.C
-# -rw-r--r--  1 namin namin 3990 Jul  8 18:26 ScanChain.C
-# -rw-r--r--  1 namin namin 3332 Jul  8 16:24 ScanChain.h
-
