@@ -1,3 +1,7 @@
+if [ $# -ne 3 ]; then
+    echo "Usage: . create.sh [MC/data] [folder name] [baby name]"
+    return
+fi
 
 isMC=$1
 inputFolder=$2
@@ -14,8 +18,7 @@ echo "Input folder: $inputFolder"
 cp -p ../$resources/doAll.C .
 cp -p ../$resources/ScanChain.* .
 cp -p ../$resources/condor* .
-#cp -rp ../$resources/CORE .
-
+cp -rp ../$resources/CORE .
 
 # give ROOT script info on data/MC
 if [ "$isMC" == "MC" ] || [ "$isMC" == "mc" ]; then
@@ -30,20 +33,19 @@ sed -i "s/BABY_NAME/$babyName/g" doAll.C
 # substitute input file names
 sed -i "s,INPUT_NAMES,$inputFolder/*.root,g" doAll.C
 
-cat doAll.C
-
 # substitute voms proxy into condor submission file
 vomsInfo=$(voms-proxy-info | grep "path")
 if [ -z "$vomsInfo" ]; then
     echo "Output of command \"voms-proxy-info\" is malformed"
     echo "Create a voms proxy before proceeding"
-    exit 1
+    return
 fi
 proxyFile=$(echo $vomsInfo | awk '{print $3}')
 cp -p ../$resources/condorFile .
 sed -i "s,PROXY_FILE,$proxyFile," condorFile
 
-
+echo "Submitting $babyName"
+condor_submit condorFile
 
 
 # -rwxr-xr-x  1 namin namin  986 Jul  8 23:04 condorExecutable.sh
