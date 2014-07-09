@@ -8,12 +8,22 @@ inputFolder=$2
 babyName=$3
 resources="resources"
 
-mkdir $babyName
-cd $babyName
 
 echo ">>> MC or Data: $isMC"
 echo ">>> Baby name (and folder name): $babyName"
 echo ">>> Input folder: $inputFolder"
+
+# die if no voms proxy
+vomsInfo=$(voms-proxy-info | grep "path")
+if [ -z "$vomsInfo" ]; then
+    echo ">>> Output of command \"voms-proxy-info\" is malformed"
+    echo ">>> Create a voms proxy before proceeding"
+    return
+fi
+
+mkdir $babyName
+cd $babyName
+
 
 cp -p ../$resources/doAll.C .
 cp -p ../$resources/ScanChain.* .
@@ -38,12 +48,6 @@ sed -i "s/BABY_NAME/$babyName/g" doAll.C
 sed -i "s,INPUT_NAMES,$inputFolder/*.root,g" doAll.C
 
 # substitute voms proxy into condor submission file
-vomsInfo=$(voms-proxy-info | grep "path")
-if [ -z "$vomsInfo" ]; then
-    echo ">>> Output of command \"voms-proxy-info\" is malformed"
-    echo ">>> Create a voms proxy before proceeding"
-    return
-fi
 proxyFile=$(echo $vomsInfo | awk '{print $3}')
 echo ">>> Telling condor to use proxy file $proxyFile"
 cp -p ../$resources/condorFile .
