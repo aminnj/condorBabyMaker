@@ -18,6 +18,7 @@ vomsInfo=$(voms-proxy-info | grep "path")
 if [ -z "$vomsInfo" ]; then
     echo ">>> Output of command \"voms-proxy-info\" is malformed"
     echo ">>> Create a voms proxy before proceeding"
+    echo ">>>   \" voms-proxy-init -valid 120:00 \""
     return
 fi
 
