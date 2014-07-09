@@ -52,7 +52,7 @@ void babyMaker::ScanChain(TChain* chain, std::string baby_name, bool isMC) {
     for( unsigned int iEvent = 0; iEvent < nEventsTree; ++iEvent) {
     
 
-        if(nEventsTotal > 1000) break;
+        //if(nEventsTotal > 1000) break;
       // Get Event Content
       tree->LoadTree(iEvent);
       cms2.GetEntry(iEvent);
