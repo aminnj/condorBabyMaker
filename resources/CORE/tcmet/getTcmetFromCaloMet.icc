@@ -1,0 +1,444 @@
+// -*- C++ -*-
+
+#ifndef GETTCMETFROMCALOMET_ICC
+#define GETTCMETFROMCALOMET_ICC
+
+#include "TH2.h"
+
+using namespace std;
+using namespace tas;
+
+bool  removeDuplicates_  = false;
+
+static metStruct getTcmetFromCaloMet(TH2F* rf, bool printout = false, ostream& ostr = cout);
+static bool  isMuon               ( int index );
+static bool  isElectron           ( int index );
+static bool  isGoodTrack          ( int index );
+static void  correctMETforMuon    ( LorentzVector p4, int index );
+static void  correctMETforPion    ( int index , TH2F* rf);
+static void  findDuplicateTracks  ();
+static void  correctSumEtForMuon  ( LorentzVector p4, int index );
+static void  correctSumEtForPion  ( int index , TH2F* rf);
+static bool  closeToElectron      ( int index );
+int vetoTrack( int i , int j );
+inline double fround(double n, double d){
+  return floor(n * pow(10., d) + .5) / pow(10., d);
+}
+
+void printMet(string label, float tcmet_x_pre, float tcmet_y_pre, float tcmet_x , float tcmet_y , float tcsumet, ostream& ostr, int index = -1, int muindex = -1){
+ 
+  double ndec = 2.;
+  
+  float pt     = 0 ;
+  float phi    = 0; 
+  float eta    = 0 ;
+  float d0corr = 0;
+  float d0vtx  = 0;
+
+  if( index > -1 ){
+    pt      = trks_charge().at(index) * trks_trk_p4().at(index).pt();
+    phi     = trks_trk_p4().at(index).phi();
+    eta     = trks_trk_p4().at(index).eta();
+    d0corr  = trks_d0corr().at(index);
+    d0vtx   = trks_d0vtx().at(index);
+  }
+
+  int   flag     = -1;
+  float globalpt = 0.;
+  float delx     = 0.;
+  float dely     = 0.;
+
+  if( muindex > -1 ){
+    flag      = mus_tcmet_flag().at(muindex);
+    globalpt  = mus_gfit_p4().at(muindex).pt();
+    delx      = mus_met_deltax().at(muindex);
+    dely      = mus_met_deltay().at(muindex);
+  }
+
+  ostr << "|" << setw(12) << label                                            << setw(4)
+       << "|" << setw(8)  << flag                                             << setw(4)
+       << "|" << setw(8)  << delx                                             << setw(4)
+       << "|" << setw(8)  << dely                                             << setw(4)
+       << "|" << setw(8)  << fround(tcmet_x - tcmet_x_pre,ndec)               << setw(4)
+       << "|" << setw(8)  << fround(tcmet_y - tcmet_y_pre,ndec)               << setw(4)
+       << "|" << setw(8)  << fround(tcmet_x,ndec)                             << setw(4)
+       << "|" << setw(8)  << fround(tcmet_y,ndec)                             << setw(4)
+       << "|" << setw(8)  << fround(sqrt(pow(tcmet_x,2)+pow(tcmet_y,2)),ndec) << setw(4)       
+       << "|" << setw(8)  << fround(atan2(tcmet_y,tcmet_x),ndec)              << setw(4)       
+       << "|" << setw(8)  << fround(tcsumet,ndec)                             << setw(4) 
+       << "|" << setw(8)  << fround(pt,ndec)                                  << setw(4) 
+       << "|" << setw(8)  << fround(globalpt,ndec)                            << setw(4) 
+       << "|" << setw(8)  << fround(phi,ndec)                                 << setw(4) 
+       << "|" << setw(8)  << fround(eta,ndec)                                 << setw(4) 
+       << "|" << setw(8)  << fround(d0corr,ndec)                              << setw(4)
+       << "|" << setw(8)  << fround(d0vtx,ndec)                               << setw(4) << "|" << endl;
+  
+}
+
+void printHeader(ostream& ostr){
+
+  ostr << endl;
+  //ostr << evt_dataset() << endl;
+  ostr << evt_run() << " " << evt_lumiBlock() << " " << evt_event() << endl;
+
+  ostr << "|" << setw(12) << "label"   << setw(4)
+       << "|" << setw(8)  << "flag"    << setw(4)
+       << "|" << setw(8)  << "mudelx"  << setw(4)
+       << "|" << setw(8)  << "mudely"  << setw(4)
+       << "|" << setw(8)  << "deltax"  << setw(4)
+       << "|" << setw(8)  << "deltay"  << setw(4)
+       << "|" << setw(8)  << "metx"    << setw(4)
+       << "|" << setw(8)  << "mety"    << setw(4)
+       << "|" << setw(8)  << "met"     << setw(4)
+       << "|" << setw(8)  << "metphi"  << setw(4)
+       << "|" << setw(8)  << "sumet"   << setw(4) 
+       << "|" << setw(8)  << "pT"      << setw(4) 
+       << "|" << setw(8)  << "gpT"     << setw(4) 
+       << "|" << setw(8)  << "phi"     << setw(4)
+       << "|" << setw(8)  << "eta"     << setw(4)
+       << "|" << setw(8)  << "d0corr"  << setw(4)
+       << "|" << setw(8)  << "d0vtx"   << setw(4) << "|" << endl;
+    
+}
+
+//--------------------------------------------------------------------
+
+float tcmet_x;
+float tcmet_y;
+float tcmet_x_pre;
+float tcmet_y_pre;
+float tcsumet;
+bool  printout_;
+vector<int> duplicateTracks;
+
+metStruct getTcmetFromCaloMet (TH2F* rf, bool printout, ostream& ostr)
+{
+
+  duplicateTracks.clear();
+  if( removeDuplicates_ ) findDuplicateTracks();
+  
+  printout_ = printout;
+  
+     //initialize to calomet values
+     tcmet_x = evt_met() * cos( evt_metPhi() );
+     tcmet_y = evt_met() * sin( evt_metPhi() );
+     tcsumet = evt_sumet();
+  
+     if(printout_){
+       printHeader(ostr);
+       printMet("Initial",tcmet_x,tcmet_y,tcmet_x,tcmet_y,tcsumet,ostr);
+     }
+
+     //correct calomet for muons
+     for( unsigned int i = 0; i < mus_p4().size(); i++ ) {
+    
+	  int flag = mus_tcmet_flag().at(i);
+    
+          tcmet_x_pre = tcmet_x;
+          tcmet_y_pre = tcmet_y;
+
+          //skip muons with tracker dpt/pt > 1
+          if( mus_ptErr().at(i)/mus_p4().at(i).pt() > 1 ) continue;
+
+	  if( flag == 0 ) continue;
+    
+	  //for flags 1,2,3,5 only perform muon correction
+	  //if validSTAHits > 0
+         
+	  else if( flag == 1 ) { 
+      
+	       if(mus_gfit_validSTAHits().at(i) > 0) {
+		    correctMETforMuon  ( mus_gfit_p4().at(i), i );
+		    correctSumEtForMuon( mus_gfit_p4().at(i), i );
+                    if(printout_)       printMet("Muon",tcmet_x_pre,tcmet_y_pre,tcmet_x,tcmet_y,tcsumet,ostr,mus_trkidx().at(i),i);
+	       }
+      
+	       else if(isGoodTrack( mus_trkidx().at(i) )) {
+		    correctMETforPion  ( mus_trkidx().at(i) , rf);
+		    correctSumEtForPion( mus_trkidx().at(i) , rf);
+                    if(printout_)       printMet("Pion",tcmet_x_pre,tcmet_y_pre,tcmet_x,tcmet_y,tcsumet,ostr,mus_trkidx().at(i));
+	       }
+	  }
+	  else if( flag == 2 ) {
+      
+	       if(mus_gfit_validSTAHits().at(i) > 0) {
+		    correctMETforMuon  ( mus_trk_p4().at(i), i );
+		    correctSumEtForMuon( mus_trk_p4().at(i), i );
+                    if(printout_)       printMet("Muon",tcmet_x_pre,tcmet_y_pre,tcmet_x,tcmet_y,tcsumet,ostr,mus_trkidx().at(i),i);
+	       }
+      
+	       else if(isGoodTrack( mus_trkidx().at(i) )) {
+		    correctMETforPion  ( mus_trkidx().at(i) , rf);
+		    correctSumEtForPion( mus_trkidx().at(i) , rf);
+                    if(printout_)       printMet("Pion",tcmet_x_pre,tcmet_y_pre,tcmet_x,tcmet_y,tcsumet,ostr,mus_trkidx().at(i));
+	       }
+	  }
+	  else if( flag == 3 || flag==5 ) {
+      
+	       if(mus_gfit_validSTAHits().at(i) > 0) {
+		    correctMETforMuon  ( mus_p4().at(i), i );
+		    correctSumEtForMuon( mus_p4().at(i), i );
+                    if(printout_)       printMet("Muon",tcmet_x_pre,tcmet_y_pre,tcmet_x,tcmet_y,tcsumet,ostr,mus_trkidx().at(i),i);
+	       }
+
+	       else if(isGoodTrack( mus_trkidx().at(i) )) {
+		    correctMETforPion  ( mus_trkidx().at(i) , rf);
+		    correctSumEtForPion( mus_trkidx().at(i) , rf);
+                    if(printout_)       printMet("Pion",tcmet_x_pre,tcmet_y_pre,tcmet_x,tcmet_y,tcsumet,ostr,mus_trkidx().at(i),i);
+	       }
+	  }
+	  else if( flag == 4 ) {
+	       correctMETforPion  ( mus_trkidx().at(i) , rf);
+	       correctSumEtForPion( mus_trkidx().at(i) , rf);
+               if(printout_)       printMet("Pion",tcmet_x_pre,tcmet_y_pre,tcmet_x,tcmet_y,tcsumet,ostr,mus_trkidx().at(i));
+               
+	  }
+    
+	  else
+	       std::cout << "Muon has an undefined flag!\n";
+    
+     }
+  
+     //correct muon-corrected calomet for pions
+     for( unsigned int i = 0; i < trks_trk_p4().size(); i++ ) {
+    
+	  if( isMuon( i ) ) 
+	       continue;
+    
+	  if( isElectron( i ) ) 
+	       continue;
+    
+	  if( !isGoodTrack( i ) ) 
+	       continue;
+
+	  if (closeToElectron(i))
+	       continue;
+
+          tcmet_x_pre = tcmet_x;
+          tcmet_y_pre = tcmet_y;
+          
+	  correctMETforPion( i , rf);
+	  correctSumEtForPion( i , rf);
+          
+          if( printout_ ){
+            if( closeToElectron(i) )  printMet("Pion (e)",tcmet_x_pre,tcmet_y_pre,tcmet_x,tcmet_y,tcsumet,ostr,i);
+            else                      printMet("Pion",    tcmet_x_pre,tcmet_y_pre,tcmet_x,tcmet_y,tcsumet,ostr,i);
+          }
+     }
+  
+     float tcmet    = TMath::Sqrt( tcmet_x * tcmet_x + tcmet_y * tcmet_y );
+     float tcmetPhi = atan2(tcmet_y,tcmet_x); 
+
+     metStruct tcmetStruct;
+     tcmetStruct.met    = tcmet;
+     tcmetStruct.metphi = tcmetPhi;
+     tcmetStruct.metx   = tcmet_x;
+     tcmetStruct.mety   = tcmet_y;
+     tcmetStruct.sumet  = tcsumet;
+
+     if(printout_)       printMet("Final",tcmet_x_pre,tcmet_y_pre,tcmetStruct.metx,tcmetStruct.mety,tcmetStruct.sumet,ostr);
+          
+     return tcmetStruct;
+}
+
+//--------------------------------------------------------------------
+
+bool isGoodTrack( int index ) {
+  
+     float corrected_d0 = trks_d0corr().at(index);
+
+     if( trks_algo().at(index) < 8 ) {
+
+       float d0cut = sqrt( pow(0.015,2) + pow(0.5/trks_trk_p4().at(index).pt(),2) );
+       if( d0cut > 0.3 ) d0cut = 0.3;
+
+       if( fabs( corrected_d0 ) > d0cut )                return false;
+       //if( trks_nlayers().at(index) < nlayerscut_4567_ ) return false;
+     }
+     else {
+       //if( trks_nlayers().at(index) < nlayerscut_89_ )                     return false;
+       if( trks_validHits().at(index) < 9 )                                return false;
+       if( trks_chi2().at(index) / trks_ndof().at(index) > 5. )            return false;
+       if( trks_ptErr().at(index) / trks_trk_p4().at(index).pt() > 0.20 )  return false;
+     }
+
+     if( trks_validHits().at(index) < 6 )                               return false;
+     if( trks_chi2().at(index) / trks_ndof().at(index) > 5 )            return false;
+     if( fabs( trks_trk_p4().at(index).eta() ) > 2.65 )                 return false;
+     if( trks_trk_p4().at(index).pt() > 100 )                           return false;
+     if( trks_ptErr().at(index) / trks_trk_p4().at(index).pt() > 0.20 ) return false;
+     if( !isTrackQuality( index, (1 << highPurity) ) )                  return false;
+
+     if( trks_trk_p4().at(index).pt() > 0 && fabs(trks_trk_p4().at(index).eta()) > 2.5 ) return false;
+     
+     if( removeDuplicates_ ) {
+      
+       for( unsigned int i = 0 ; i < duplicateTracks.size() ; i++ ){
+         if( index == duplicateTracks.at(i) ) return false;
+       }
+     
+     }
+
+     return true;
+}
+
+//--------------------------------------------------------------------
+
+void findDuplicateTracks(){
+
+  for( unsigned int i = 0; i < trks_trk_p4().size(); i++ ) {
+
+    //if( trks_trk_p4().at(i).pt() < 5. ) continue;
+
+    for( unsigned int j = i + 1 ; j < trks_trk_p4().size(); j++ ) {
+
+      if( trks_charge().at(i) * trks_charge().at(j) < 0 ) continue;
+      //if( trks_trk_p4().at(j).pt() < 5. )                 continue;
+      
+      float dphi = fabs( trks_trk_p4().at(i).phi() - trks_trk_p4().at(j).phi() );
+      if( dphi > TMath::Pi() ) dphi = TMath::TwoPi() - dphi;
+
+      float dcotth = fabs( 1./tan( trks_trk_p4().at(i).theta() ) - 1./tan( trks_trk_p4().at(j).theta() ) );
+
+      if( dphi   > 0.03 )      continue;
+      if( dcotth > 0.0006 )    continue;
+
+      int iVeto = vetoTrack( i , j );
+
+      duplicateTracks.push_back(iVeto);
+      
+    }
+  }
+}
+
+//--------------------------------------------------------------------
+
+int vetoTrack( int i , int j ){
+
+  //given 2 tracks, decide which one to veto
+
+  if     ( trks_validHits().at(i) < trks_validHits().at(j) )                               return i;
+  else if( trks_validHits().at(i) > trks_validHits().at(j) )                               return j;
+  else if( trks_chi2().at(i) / trks_ndof().at(i) > trks_chi2().at(j) / trks_ndof().at(j) ) return i;  
+  else if( trks_chi2().at(i) / trks_ndof().at(i) < trks_chi2().at(j) / trks_ndof().at(j) ) return j;  
+  else if( trks_ptErr().at(i) > trks_ptErr().at(j) )                                       return i; 
+  else if( trks_ptErr().at(i) < trks_ptErr().at(j) )                                       return j; 
+  return i;
+
+}
+
+//--------------------------------------------------------------------
+
+void correctMETforMuon( LorentzVector p4, int index ) {
+
+     float deltax = mus_met_deltax().at(index);
+     float deltay = mus_met_deltay().at(index);
+
+     tcmet_x -= ( p4.px() - deltax );
+     tcmet_y -= ( p4.py() - deltay );
+
+}
+
+//--------------------------------------------------------------------
+
+void correctMETforPion( int index , TH2F* rf) {
+
+     float deltax = 0;
+     float deltay = 0;
+  
+     if( trks_trk_p4().at(index).pt() > 1 ) {
+    
+	  int bin =        rf->FindBin(trks_trk_p4().at(index).eta(), trks_trk_p4().at(index).pt() );
+	  float response = rf->GetBinContent( bin );
+    
+	  deltax = response * trks_trk_p4().at(index).P() * 
+	       sin( trks_outer_p4().at(index).Theta() ) * cos( trks_outer_p4().at(index).phi() );
+	  deltay = response * trks_trk_p4().at(index).P() * 
+	       sin( trks_outer_p4().at(index).Theta() ) * sin( trks_outer_p4().at(index).phi() );
+     }
+  
+     tcmet_x -= ( trks_trk_p4().at(index).px() - deltax );
+     tcmet_y -= ( trks_trk_p4().at(index).py() - deltay );
+}
+
+//--------------------------------------------------------------------
+
+void correctSumEtForMuon( LorentzVector p4, int index ){
+  
+     float deltax = mus_met_deltax().at(index);
+     float deltay = mus_met_deltay().at(index);
+
+     tcsumet += ( p4.pt() - TMath::Sqrt( deltax * deltax + deltay * deltay ) );
+}
+
+//--------------------------------------------------------------------
+
+void correctSumEtForPion( int index , TH2F* rf) {
+  
+     if( trks_trk_p4().at(index).pt() < 1) {
+	  tcsumet += trks_trk_p4().at(index).pt();
+     }
+  
+     else {
+	  int bin = rf->FindBin( trks_trk_p4().at(index).eta() , trks_trk_p4().at(index).pt()); 
+	  double fracTrackEnergy = rf->GetBinContent( bin); 
+	  tcsumet += ( 1 - fracTrackEnergy ) * trks_trk_p4().at(index).pt();
+     }
+}
+
+//--------------------------------------------------------------------
+
+bool isMuon( int index ) {
+
+     for( unsigned int i = 0; i < mus_p4().size(); i++ ) {
+
+	  if( mus_trkidx().at(i) == index ) return true;
+     }
+
+     return false;
+}
+
+//--------------------------------------------------------------------
+
+bool isElectron( int index ) {
+
+     for( unsigned int i = 0; i < els_p4().size(); i++ ) {
+
+	  if( els_trkidx().at(i) == index && els_hOverE().at(i) < 0.1 ) return true;
+     }
+
+     return false;
+}
+
+//--------------------------------------------------------------------
+
+bool closeToElectron( int index ) {
+
+     for (unsigned int i = 0; i < els_p4().size(); i++)
+     {
+	  if (els_hOverE().at(i) > 0.1)
+	       continue;
+
+	  if (els_p4()[i].pt() < 10.)
+	       continue;
+
+	  float deltaPhi   = fabs( els_p4()[i].phi() - trks_trk_p4()[index].phi() );
+          if( deltaPhi > TMath::Pi() ) deltaPhi = TMath::TwoPi() - deltaPhi;
+
+	  float deltaEta   = els_p4()[i].eta() - trks_trk_p4()[index].eta();
+
+	  float deltaR     = sqrt(deltaPhi * deltaPhi + deltaEta * deltaEta);
+
+	  if (deltaR < 0.015)     return true;
+     }
+
+     return false;
+}
+
+//--------------------------------------------------------------------
+
+#endif
+
+
+
+

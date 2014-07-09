@@ -1,0 +1,159 @@
+// -*- C++ -*-
+
+#ifndef CLEANTCMET_ICC
+#define CLEANTCMET_ICC
+
+#include "../metSelections.h"
+
+static metStruct cleanTCMETforHFspikes   (float met_x, float met_y, float sumet);
+static metStruct cleanTCMETforHCALnoise  (float met_x, float met_y, float sumet);
+static metStruct cleanTCMETforECALspikes (float met_x, float met_y, float sumet);
+
+//---------------------------------------------------------
+
+//
+// functions for cleaning tcMET
+//
+
+#include <math.h>
+#include "../CMS2.h"
+
+//------------------------------------------------------
+// function to clean tcMET for HF.
+// HF spike is defined to be a tower in forward region 
+// with ET > 5. GeV and alpha < -0.8 || alpha > 0.99.
+// If a tower is identified as a spike, tcMET is
+// corrected by adding the components of the tower to
+// the corresponding components of tcMET.
+//------------------------------------------------------
+metStruct cleanTCMETforHFspikes (float met_x, float met_y, float sumet)
+{
+     for (unsigned int hfi = 0; hfi < cms2.twrs_emEnergy().size(); ++hfi)
+     {
+	  if (fabs(cms2.twrs_eta()[hfi]) < 3.)
+	       continue;
+
+	  float towerET = cms2.twrs_emEt()[hfi] + cms2.twrs_hadEt()[hfi];
+
+	  if (towerET < 5.)
+	       continue;
+
+	  float alpha = cms2.twrs_emEt()[hfi] / towerET;
+
+	  if (alpha > -0.8 && alpha < 0.99)
+	       continue;
+
+	  const float spikeX = towerET * cos(cms2.twrs_phi()[hfi]);
+	  const float spikeY = towerET * sin(cms2.twrs_phi()[hfi]);
+
+	  met_x  += spikeX;
+	  met_y  += spikeY;
+	  sumet  -= towerET;
+     } // end loop over HF towers
+
+     metStruct tcmetStruct;
+     tcmetStruct.met    = sqrt(met_x * met_x + met_y * met_y);
+     tcmetStruct.metphi = atan2(met_y, met_x);
+     tcmetStruct.metx   = met_x;
+     tcmetStruct.mety   = met_y;
+     tcmetStruct.sumet  = sumet;
+
+     return tcmetStruct;
+}
+
+//------------------------------------------------------
+// function to clean tcMET for HCAL.
+// Attemp to identify noise in HB/HE by looking for jets
+// w/in |eta| < 2.55 that fail one of these criteria:
+//
+// jet EMF > 0.01
+// jet fHPD < 0.98
+// jet n90Hits > 1
+//
+// If a jet fails one of the above, correct tcMET by
+// adding the components of the jet to the corresponding
+// components of tcMET.
+//------------------------------------------------------
+metStruct cleanTCMETforHCALnoise (float met_x, float met_y, float sumet)
+{
+     for (unsigned int jeti = 0; jeti < cms2.jets_emFrac().size(); ++jeti)
+     {
+	  if (cms2.jets_p4()[jeti].pt() < 5.)
+	       continue;
+
+	  if (fabs(cms2.jets_p4()[jeti].eta()) > 2.55)
+	       continue;
+
+	  if (cms2.jets_emFrac()[jeti] > 0.01 && cms2.jets_fHPD()[jeti] < 0.98 && cms2.jets_n90Hits()[jeti] > 1)
+	       continue;
+
+	  const float spikeX = cms2.jets_p4()[jeti].px();
+	  const float spikeY = cms2.jets_p4()[jeti].py();
+
+	  met_x  += spikeX;
+	  met_y  += spikeY;
+	  sumet  -= cms2.jets_p4()[jeti].pt();
+     } // end loop over jets
+
+     metStruct tcmetStruct;
+     tcmetStruct.met    = sqrt(met_x * met_x + met_y * met_y);
+     tcmetStruct.metphi = atan2(met_y, met_x);
+     tcmetStruct.metx   = met_x;
+     tcmetStruct.mety   = met_y;
+     tcmetStruct.sumet  = sumet;
+
+     return tcmetStruct;
+}
+
+//------------------------------------------------------
+// function to clean tcMET for ECAL spikes.
+// This method attempts to identify ECAL spikes that
+// passed the isolation requirement by looking for
+// ECAL rechits that are out of time by more than 3 ns.
+// If a spike is identified, tcMET is corrected by
+// adding the components of the rechit to the
+// corresponding components of tcMET.
+//------------------------------------------------------
+metStruct cleanTCMETforECALspikes (float met_x, float met_y, float sumet)
+{
+     float toffset = 0.0;
+     if (cms2.evt_run() == 132646) toffset = -1.0;
+     if (cms2.evt_run() == 132647) toffset = +7.0;
+
+     for (unsigned int ecali = 0; ecali < cms2.twrs_emEnergy().size(); ++ecali)
+     {
+	  float eta = cms2.twrs_eta()[ecali];
+
+	  if (fabs(eta) > 3.)
+	       continue;
+
+	  for (unsigned int reci = 0; reci < cms2.twrs_emThresh()[ecali].size(); ++reci)
+	  {
+	       float rechitET = twrs_emThresh()[ecali][reci] / cosh(eta);
+
+	       if (rechitET < 5.)
+		    continue;
+
+	       if (fabs(twrs_emThreshTime()[ecali][reci] - toffset+1) < 3.0)
+		    continue;
+
+	       const float spikeX = rechitET * cos(twrs_phi()[ecali]);
+	       const float spikeY = rechitET * sin(twrs_phi()[ecali]);
+
+	       met_x  += spikeX;
+	       met_y  += spikeY;
+	       sumet  -= rechitET;
+	  } // end loop over ECAL rechits
+     } // end loop over ECAL towers
+
+     metStruct tcmetStruct;
+     tcmetStruct.met    = sqrt(met_x * met_x + met_y * met_y);
+     tcmetStruct.metphi = atan2(met_y, met_x);
+     tcmetStruct.metx   = met_x;
+     tcmetStruct.mety   = met_y;
+     tcmetStruct.sumet  = sumet;
+
+     return tcmetStruct;
+}
+
+#endif

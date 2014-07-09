@@ -1,0 +1,580 @@
+// -*- C++ -*-
+
+#ifndef GETTOPMASSESTIMATE_ICC
+#define GETTOPMASSESTIMATE_ICC
+
+#include "TH2.h"
+#include "TLorentzVector.h"
+//#include "Resolutions.h"
+#include "../CORE/topmass/Resolutions.C"
+
+using namespace std;
+using namespace tas;
+
+
+static float getTopMassEstimate(ttdilepsolve * d_llsol, int hypIdx, vector<ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<float> > > &myJets_p4, double met, double metphi, int smearIterations, TLorentzVector &mom_top1,  TLorentzVector &mom_top2);
+
+float getTopMassEstimate (ttdilepsolve * d_llsol, int hypIdx, vector<ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<float> > > &myJets_p4, double met, double metphi, int smearIterations, TLorentzVector &mom_top1,  TLorentzVector &mom_top2)
+{
+
+  //Jet resolution functions
+  bool doGaussian = false;
+  
+  int SM_JetMET = smearIterations;
+
+  //  int SM_JetMET = 1; // No smearing, default as 100 is very slow...
+  //  SM_JetMET     = 100; // recommended value for MC
+  //  int SM_JetMET = 1000; // recommended value for data
+  
+  TRandom3* rand3;
+  string JR_Standalone_Path = "../CORE/topmass/JR_Standalone/txts/";
+  string ptFileName;
+  string etaFileName;  
+  string phiFileName;
+  
+  JetResolution* ptResol; 
+  JetResolution* etaResol;
+  JetResolution* phiResol;
+ 
+  if( SM_JetMET != 1 ) {
+    //TRandom 3 class
+    rand3 = new TRandom3();
+    
+    ptFileName  = JR_Standalone_Path+"Spring10_PtResolution_AK5PF.txt";
+    etaFileName = JR_Standalone_Path+"Spring10_EtaResolution_AK5PF.txt";
+    phiFileName = JR_Standalone_Path+"Spring10_PhiResolution_AK5PF.txt";
+
+    
+    ptResol  = new JetResolution(ptFileName,doGaussian);
+    etaResol = new JetResolution(etaFileName,doGaussian);
+    phiResol = new JetResolution(phiFileName,doGaussian);
+  }
+  //top mass instanciation:
+  // ttdilepsolve * d_llsol = new ttdilepsolve;
+  // set up histos used in tomass calc
+  TH1F * h_temp_MassWeight   = new TH1F("h_temp_MassWeight","h_temp_MassWeight", d_llsol->get_nMassPts(), d_llsol->get_RangeLow(), d_llsol->get_RangeHigh());
+  TH1F * h_temp_MassWeight_1 = new TH1F("h_temp_MassWeight_1","h_temp_MassWeight_1", d_llsol->get_nMassPts(), d_llsol->get_RangeLow(), d_llsol->get_RangeHigh());
+  TH1F * h_temp_MassWeight_2 = new TH1F("h_temp_MassWeight_2","h_temp_MassWeight_2", d_llsol->get_nMassPts(), d_llsol->get_RangeLow(), d_llsol->get_RangeHigh());
+  float high_weight_mass;
+
+
+  //101026 work begin
+  // IBL: here the loop STARTs
+  // -----------------------------------------
+  // Start initialising variables for top mass
+  // calculation: 
+  // -----------------------------------------
+  vector < TLorentzVector > nu1;
+  vector < TLorentzVector > nu2;
+  TLorentzVector lvTop1;
+  TLorentzVector lvTop2;
+        
+  // hyp_lt_id()[hypIdx] * hyp_ll_id()[hypIdx] //OS
+  TLorentzVector lepPlus;
+  TLorentzVector lepMinus;
+  if( hyp_lt_id()[hypIdx] < 0 ) {
+    lepPlus.SetXYZT(
+                    hyp_lt_p4()[hypIdx].x(),
+                    hyp_lt_p4()[hypIdx].y(),
+                    hyp_lt_p4()[hypIdx].z(),
+                    hyp_lt_p4()[hypIdx].t()
+                    );
+          
+    lepMinus.SetXYZT(
+                     hyp_ll_p4()[hypIdx].x(),
+                     hyp_ll_p4()[hypIdx].y(),
+                     hyp_ll_p4()[hypIdx].z(),
+                     hyp_ll_p4()[hypIdx].t()
+                     );
+  }
+  else {
+    lepPlus.SetXYZT(
+                    hyp_ll_p4()[hypIdx].x(),
+                    hyp_ll_p4()[hypIdx].y(),
+                    hyp_ll_p4()[hypIdx].z(),
+                    hyp_ll_p4()[hypIdx].t()
+                    );
+          
+    lepMinus.SetXYZT(
+                     hyp_lt_p4()[hypIdx].x(),
+                     hyp_lt_p4()[hypIdx].y(),
+                     hyp_lt_p4()[hypIdx].z(),
+                     hyp_lt_p4()[hypIdx].t()
+                     );
+  }
+        
+  TVector2 tcmetVec;
+  tcmetVec.SetMagPhi(met,metphi); 
+  map<double, double >  mapJetPhi2Discr;
+  
+  vector <TF1*> vPtRes;
+  vector <TF1*> vEtaRes;
+  vector <TF1*> vPhiRes;
+    
+  h_temp_MassWeight   ->Reset();
+  h_temp_MassWeight_1 ->Reset();
+  h_temp_MassWeight_2 ->Reset();
+        
+  float max_weight_all = 0.;
+  double max_sum_weight_all = 0.;
+  unsigned int msw_jet_all1 = d_llsol->get_SENTINEL();
+  unsigned int msw_jet_all2 = d_llsol->get_SENTINEL();
+        
+  unsigned int nSearchJets = myJets_p4.size();
+  if (nSearchJets > 2) nSearchJets = 2;
+
+  if (SM_JetMET != 1){
+    for (unsigned ijr = 0; ijr < myJets_p4.size(); ijr++){
+      TF1* fPtResol  = ptResol ->resolutionEtaPt(myJets_p4.at(ijr).Eta(), myJets_p4.at(ijr).Pt());
+      TF1* fEtaResol = etaResol->resolutionEtaPt(myJets_p4.at(ijr).Eta(), myJets_p4.at(ijr).Pt());
+      TF1* fPhiResol = phiResol->resolutionEtaPt(myJets_p4.at(ijr).Eta(), myJets_p4.at(ijr).Pt());
+	    
+      vPtRes .push_back(fPtResol);
+      vEtaRes.push_back(fEtaResol);
+      vPhiRes.push_back(fPhiResol);
+    }
+  }
+  
+  TLorentzVector inv_mass = lepPlus + lepMinus;
+
+  //Begin JetMET smearing loop---------------------------------------------------------------
+  for (int iSM_JMT = 0; iSM_JMT < SM_JetMET; iSM_JMT++){
+    TVector2 tcmetVec_sm;
+    vector <TLorentzVector> myJets_nsm_p4;
+    vector <TLorentzVector> myJets_sm_p4;
+
+    for(int ajet = 0; ajet<myJets_p4.size(); ++ajet) {
+      TLorentzVector ajet_buffer(
+                                 myJets_p4.at(ajet).x(),
+                                 myJets_p4.at(ajet).y(),
+                                 myJets_p4.at(ajet).z(),
+                                 myJets_p4.at(ajet).t()
+                                 );
+      myJets_nsm_p4.push_back(ajet_buffer);
+    }
+
+	  
+    if (SM_JetMET == 1) {
+      //      Dont_smear_JetMET(myJets_nsm_p4, tcmetVec, myJets_sm_p4, tcmetVec_sm);
+      myJets_sm_p4 = myJets_nsm_p4;
+      tcmetVec_sm  = tcmetVec;
+    }
+    else                smear_JetMET(myJets_nsm_p4, tcmetVec, myJets_sm_p4, tcmetVec_sm, rand3, vPtRes, vEtaRes, vPhiRes, inv_mass);
+    
+    for (int i_t = 0; i_t < d_llsol->get_nMassPts(); i_t++){
+      double m_top_iter = d_llsol->get_RangeLow() + i_t;  
+      
+      double max_sum_weight = 0.;
+      unsigned int msw_jet1 = d_llsol->get_SENTINEL();
+      unsigned int msw_jet2 = d_llsol->get_SENTINEL();
+      
+      for (unsigned int i_jet1 = 0; i_jet1 < nSearchJets; i_jet1++){
+        for (unsigned int i_jet2 = i_jet1 + 1; i_jet2 < nSearchJets; i_jet2++){
+          
+//           TLorentzVector jet1(
+//                               myJets_sm_p4.at(i_jet1).x(),
+//                               myJets_sm_p4.at(i_jet1).y(),
+//                               myJets_sm_p4.at(i_jet1).z(),
+//                               myJets_sm_p4.at(i_jet1).t()
+//                               );              
+//           TLorentzVector jet2(                  
+//                               myJets_sm_p4.at(i_jet2).x(),
+//                               myJets_sm_p4.at(i_jet2).y(),
+//                               myJets_sm_p4.at(i_jet2).z(),
+//                               myJets_sm_p4.at(i_jet2).t()
+//                               );
+
+          TLorentzVector jet1 = myJets_sm_p4.at(i_jet1);
+          TLorentzVector jet2 = myJets_sm_p4.at(i_jet2);
+
+          double sum_weight = 0;
+          double h_weight = 0;
+          
+          double sum_weight_1 = 0;
+          
+          //Clear neutrino vectors and solve
+          nu1.clear();
+          nu2.clear();
+          d_llsol->solve( tcmetVec_sm , jet1 , jet2 , lepPlus, lepMinus, d_llsol->get_m_W() , d_llsol->get_m_W() , m_top_iter , m_top_iter  , nu1 , nu2 );
+          
+          for (int ui = 0; ui < nu1.size(); ui++){
+            double s_weight = d_llsol->get_weight(jet1 , jet2, lepPlus, lepMinus, nu1[ui], nu2[ui], m_top_iter, mapJetPhi2Discr);
+            sum_weight += s_weight;
+            sum_weight_1 += s_weight;
+            if (h_weight < s_weight) h_weight = s_weight;
+            if (max_weight_all < s_weight){
+              max_weight_all = s_weight;
+              lvTop1 = lepPlus + nu1[ui] + jet1;
+            lvTop2 = lepMinus + nu2[ui] + jet2;
+            }
+          }
+          
+          h_temp_MassWeight_1->Fill(m_top_iter, sum_weight_1);
+          
+          double sum_weight_2 = 0;
+          
+          //Clear neutrino vectors and solve
+          nu1.clear();
+          nu2.clear();
+          d_llsol->solve( tcmetVec_sm , jet2 , jet1 , lepPlus, lepMinus, d_llsol->get_m_W() , d_llsol->get_m_W(), m_top_iter , m_top_iter, nu1 , nu2 );
+          
+          for (int ui = 0; ui < nu1.size(); ui++){
+            double s_weight = d_llsol->get_weight(jet2 , jet1, lepPlus, lepMinus, nu1[ui], nu2[ui], m_top_iter, mapJetPhi2Discr);
+            sum_weight += s_weight;
+            sum_weight_2 += s_weight;
+            if (h_weight < s_weight) h_weight = s_weight;
+            if (max_weight_all < s_weight){
+              max_weight_all = s_weight;
+              lvTop1 = lepPlus + nu1[ui] + jet2;
+              lvTop2 = lepMinus + nu2[ui] + jet1;
+            }
+          }
+          
+          h_temp_MassWeight_2->Fill(m_top_iter, sum_weight_2);
+          
+          h_temp_MassWeight->Fill(m_top_iter, sum_weight);
+          
+          if (sum_weight > max_sum_weight){
+            max_sum_weight = sum_weight;
+            msw_jet1 = i_jet1;
+            msw_jet2 = i_jet2;
+          }
+        }        //End loop over jet2
+      }          //End loop over jet1
+      if (max_sum_weight > max_sum_weight_all){
+        max_sum_weight_all = max_sum_weight;
+        msw_jet_all1 = msw_jet1;
+        msw_jet_all2 = msw_jet2;
+      }		
+    }
+  }      //End JetMet smearing loop
+
+  mom_top1 = lvTop1;
+  mom_top2 = lvTop2;
+  //Check if the highest weight is not zero
+  float highestWeightCheck = h_temp_MassWeight->GetBinContent(h_temp_MassWeight->GetMaximumBin());
+  if ( highestWeightCheck != 0 ){
+          
+    float high_weight_mass_1 = h_temp_MassWeight_1->GetMaximumBin() + d_llsol->get_RangeLow() - 1;
+    float high_weight_mass_2 = h_temp_MassWeight_2->GetMaximumBin() + d_llsol->get_RangeLow() - 1;
+          
+    float hwm_weight_1 = h_temp_MassWeight_1->GetBinContent(h_temp_MassWeight_1->GetMaximumBin());
+    float hwm_weight_2 = h_temp_MassWeight_2->GetBinContent(h_temp_MassWeight_2->GetMaximumBin());
+          
+    //          h_tree_MassWeight = h_temp_MassWeight;
+    high_weight_mass  = h_temp_MassWeight->GetMaximumBin() + d_llsol->get_RangeLow() - 1;
+          
+    //    if (42 == 42) cout<<"Found dilepton ttbar candidate with Mtop = "<<high_weight_mass<<" GeV"<<endl<<endl;
+  }
+
+
+  //101026 work end
+
+  delete h_temp_MassWeight  ;
+  delete h_temp_MassWeight_1;
+  delete h_temp_MassWeight_2;
+  
+  if( SM_JetMET != 1 ) {
+  delete rand3;
+  delete ptResol; 
+  delete etaResol;
+  delete phiResol;
+  }
+
+  if(highestWeightCheck != 0) {
+    return high_weight_mass;
+  }
+  // fallback return value
+  return -999.;
+}
+
+
+
+
+
+
+//this version finds the same "high_weight_mass", but returns vectors of top solutions (one solution for each smearing iteration).
+//The solutions are constrained to come from the top mass with max sum of weights, with the jet permutation also constrained to the one with max sum of weights (after the top mass is constrained). 
+static float getTopMassEstimate(ttdilepsolve * d_llsol, int hypIdx, vector<ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<float> > > &myJets_p4, double met, double metphi, int smearIterations, vector<TLorentzVector> &mom_top1,  vector<TLorentzVector> &mom_top2,  vector<float> &AMWTweight);
+
+float getTopMassEstimate (ttdilepsolve * d_llsol, int hypIdx, vector<ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<float> > > &myJets_p4, double met, double metphi, int smearIterations, vector<TLorentzVector> &mom_top1,  vector<TLorentzVector> &mom_top2,  vector<float> &AMWTweight)
+{
+
+  //Jet resolution functions
+  bool doGaussian = false;
+  
+  int SM_JetMET = smearIterations;
+  int nMassPts = d_llsol->get_nMassPts();
+
+  unsigned int nSearchJets = myJets_p4.size();
+  if (nSearchJets > 2) nSearchJets = 2;
+
+  int nJetPerm = nSearchJets*(nSearchJets-1);
+
+  //  int SM_JetMET = 1; // No smearing, default as 100 is very slow...
+  //  SM_JetMET     = 100; // recommended value for MC
+  //  int SM_JetMET = 1000; // recommended value for data
+  
+  TRandom3* rand3;
+  string JR_Standalone_Path = "../CORE/topmass/JR_Standalone/txts/";
+  string ptFileName;
+  string etaFileName;  
+  string phiFileName;
+  
+  JetResolution* ptResol; 
+  JetResolution* etaResol;
+  JetResolution* phiResol;
+ 
+  if( SM_JetMET != 1 ) {
+    //TRandom 3 class
+    rand3 = new TRandom3();
+    
+    ptFileName  = JR_Standalone_Path+"Spring10_PtResolution_AK5PF.txt";
+    etaFileName = JR_Standalone_Path+"Spring10_EtaResolution_AK5PF.txt";
+    phiFileName = JR_Standalone_Path+"Spring10_PhiResolution_AK5PF.txt";
+
+    
+    ptResol  = new JetResolution(ptFileName,doGaussian);
+    etaResol = new JetResolution(etaFileName,doGaussian);
+    phiResol = new JetResolution(phiFileName,doGaussian);
+  }
+  //top mass instanciation:
+  // ttdilepsolve * d_llsol = new ttdilepsolve;
+  // set up histos used in tomass calc
+  TH1F * h_temp_MassWeight   = new TH1F("h_temp_MassWeight","h_temp_MassWeight", nMassPts, d_llsol->get_RangeLow(), d_llsol->get_RangeHigh());
+
+  float high_weight_mass;
+
+  //101026 work begin
+  // IBL: here the loop STARTs
+  // -----------------------------------------
+  // Start initialising variables for top mass
+  // calculation: 
+  // -----------------------------------------
+  vector < TLorentzVector > nu1;
+  vector < TLorentzVector > nu2;
+
+  TLorentzVector init_p4(0, 0, 0 ,0);
+  TLorentzVector lvTop1[nMassPts][SM_JetMET][nJetPerm];
+  TLorentzVector lvTop2[nMassPts][SM_JetMET][nJetPerm];
+
+  float max_weight_all[nMassPts][SM_JetMET][nJetPerm];
+  double sum_js_weight[nMassPts][nJetPerm];
+  double max_sum_weight[nMassPts];
+
+  //initialise arrays
+  for (int i_t = 0; i_t < nMassPts; i_t++){
+  	for (int iPerm = 0; iPerm < nJetPerm; ++iPerm)
+  	{
+  		for (int iSM_JMT = 0; iSM_JMT < SM_JetMET; iSM_JMT++)
+  		{
+  			lvTop1[i_t][iSM_JMT][iPerm] = init_p4;
+  			lvTop2[i_t][iSM_JMT][iPerm] = init_p4;
+  			max_weight_all[i_t][iSM_JMT][iPerm] = 0;
+  		}
+		sum_js_weight[i_t][iPerm] = 0;
+  	}
+
+  	max_sum_weight[i_t] = 0;
+  	
+  }
+
+        
+  // hyp_lt_id()[hypIdx] * hyp_ll_id()[hypIdx] //OS
+  TLorentzVector lepPlus;
+  TLorentzVector lepMinus;
+  if( hyp_lt_id()[hypIdx] < 0 ) {
+    lepPlus.SetXYZT(
+                    hyp_lt_p4()[hypIdx].x(),
+                    hyp_lt_p4()[hypIdx].y(),
+                    hyp_lt_p4()[hypIdx].z(),
+                    hyp_lt_p4()[hypIdx].t()
+                    );
+          
+    lepMinus.SetXYZT(
+                     hyp_ll_p4()[hypIdx].x(),
+                     hyp_ll_p4()[hypIdx].y(),
+                     hyp_ll_p4()[hypIdx].z(),
+                     hyp_ll_p4()[hypIdx].t()
+                     );
+  }
+  else {
+    lepPlus.SetXYZT(
+                    hyp_ll_p4()[hypIdx].x(),
+                    hyp_ll_p4()[hypIdx].y(),
+                    hyp_ll_p4()[hypIdx].z(),
+                    hyp_ll_p4()[hypIdx].t()
+                    );
+          
+    lepMinus.SetXYZT(
+                     hyp_lt_p4()[hypIdx].x(),
+                     hyp_lt_p4()[hypIdx].y(),
+                     hyp_lt_p4()[hypIdx].z(),
+                     hyp_lt_p4()[hypIdx].t()
+                     );
+  }
+        
+  TVector2 tcmetVec;
+  tcmetVec.SetMagPhi(met,metphi); 
+  map<double, double >  mapJetPhi2Discr;
+  
+  vector <TF1*> vPtRes;
+  vector <TF1*> vEtaRes;
+  vector <TF1*> vPhiRes;
+    
+  h_temp_MassWeight   ->Reset();
+
+  double max_sum_weight_all = 0.;
+  //unsigned int msw_jet_all1 = d_llsol->get_SENTINEL();
+  //unsigned int msw_jet_all2 = d_llsol->get_SENTINEL();
+        
+
+  if (SM_JetMET != 1){
+    for (unsigned ijr = 0; ijr < myJets_p4.size(); ijr++){
+      TF1* fPtResol  = ptResol ->resolutionEtaPt(myJets_p4.at(ijr).Eta(), myJets_p4.at(ijr).Pt());
+      TF1* fEtaResol = etaResol->resolutionEtaPt(myJets_p4.at(ijr).Eta(), myJets_p4.at(ijr).Pt());
+      TF1* fPhiResol = phiResol->resolutionEtaPt(myJets_p4.at(ijr).Eta(), myJets_p4.at(ijr).Pt());
+	    
+      vPtRes .push_back(fPtResol);
+      vEtaRes.push_back(fEtaResol);
+      vPhiRes.push_back(fPhiResol);
+    }
+  }
+  
+  TLorentzVector inv_mass = lepPlus + lepMinus;
+
+  //Begin JetMET smearing loop---------------------------------------------------------------
+  for (int iSM_JMT = 0; iSM_JMT < SM_JetMET; iSM_JMT++){
+    TVector2 tcmetVec_sm;
+    vector <TLorentzVector> myJets_nsm_p4;
+    vector <TLorentzVector> myJets_sm_p4;
+
+    for(int ajet = 0; ajet<myJets_p4.size(); ++ajet) {
+      TLorentzVector ajet_buffer(
+                                 myJets_p4.at(ajet).x(),
+                                 myJets_p4.at(ajet).y(),
+                                 myJets_p4.at(ajet).z(),
+                                 myJets_p4.at(ajet).t()
+                                 );
+      myJets_nsm_p4.push_back(ajet_buffer);
+    }
+
+	//use unsmeared jets for the first iteration (also ensures no smearing if SM_JetMET==1)  
+    if (iSM_JMT == 0) {
+      //      Dont_smear_JetMET(myJets_nsm_p4, tcmetVec, myJets_sm_p4, tcmetVec_sm);
+      myJets_sm_p4 = myJets_nsm_p4;
+      tcmetVec_sm  = tcmetVec;
+    }
+    else                smear_JetMET(myJets_nsm_p4, tcmetVec, myJets_sm_p4, tcmetVec_sm, rand3, vPtRes, vEtaRes, vPhiRes, inv_mass);
+    
+    for (int i_t = 0; i_t < nMassPts; i_t++){
+      double m_top_iter = d_llsol->get_RangeLow() + i_t;  
+      
+      //unsigned int msw_jet1 = d_llsol->get_SENTINEL();
+      //unsigned int msw_jet2 = d_llsol->get_SENTINEL();
+      
+      int niej = 0;
+      for (unsigned int i_jet1 = 0; i_jet1 < nSearchJets; i_jet1++){
+        for (unsigned int i_jet2 = 0; i_jet2 < nSearchJets; i_jet2++){
+
+          if(i_jet1 == i_jet2) {niej++; continue;}
+
+          int iPerm = i_jet1*(nSearchJets) + i_jet2 - niej;
+
+          TLorentzVector jet1 = myJets_sm_p4.at(i_jet1);
+          TLorentzVector jet2 = myJets_sm_p4.at(i_jet2);
+
+          double sum_weight = 0;
+          double h_weight = 0;
+
+          //Clear neutrino vectors and solve
+          nu1.clear();
+          nu2.clear();
+          d_llsol->solve( tcmetVec_sm , jet1 , jet2 , lepPlus, lepMinus, d_llsol->get_m_W() , d_llsol->get_m_W() , m_top_iter , m_top_iter  , nu1 , nu2 );
+          
+          for (int ui = 0; ui < nu1.size(); ui++){
+            double s_weight = d_llsol->get_weight(jet1 , jet2, lepPlus, lepMinus, nu1[ui], nu2[ui], m_top_iter, mapJetPhi2Discr);
+            sum_weight += s_weight;
+            sum_js_weight[i_t][iPerm] += s_weight;
+            if (h_weight < s_weight) h_weight = s_weight;
+            if (max_weight_all[i_t][iSM_JMT][iPerm] < s_weight){
+              max_weight_all[i_t][iSM_JMT][iPerm] = s_weight;
+              lvTop1[i_t][iSM_JMT][iPerm] = lepPlus + nu1[ui] + jet1;
+              lvTop2[i_t][iSM_JMT][iPerm] = lepMinus + nu2[ui] + jet2;
+            }
+          }
+          
+          h_temp_MassWeight->Fill(m_top_iter, sum_weight); 
+          
+          if (sum_weight > max_sum_weight[i_t]){
+            max_sum_weight[i_t] = sum_weight;
+            //msw_jet1 = i_jet1;
+            //msw_jet2 = i_jet2;
+          }
+        }        //End loop over jet2
+      }          //End loop over jet1
+      if (max_sum_weight[i_t] > max_sum_weight_all){
+        max_sum_weight_all = max_sum_weight[i_t];
+        //msw_jet_all1 = msw_jet1;
+        //msw_jet_all2 = msw_jet2;
+      }		
+    }
+  }      //End JetMet smearing loop
+
+
+  //Check if the highest weight is not zero
+  float highestWeightCheck = h_temp_MassWeight->GetBinContent(h_temp_MassWeight->GetMaximumBin());
+  if ( highestWeightCheck != 0 ){
+          
+    high_weight_mass  = h_temp_MassWeight->GetMaximumBin() + d_llsol->get_RangeLow() - 1;
+    int i_t_max = h_temp_MassWeight->GetMaximumBin()-1;
+
+    double sum_js_weight_max = -999.0;
+    int iPerm_max = -999;
+
+  	for (int iPerm = 0; iPerm < nJetPerm; ++iPerm)
+  	{
+  		if(sum_js_weight[i_t_max][iPerm]>sum_js_weight_max) { iPerm_max = iPerm; sum_js_weight_max = sum_js_weight[i_t_max][iPerm]; }
+  	}
+
+  	//cout<<i_t_max<<" "<<iPerm_max<<endl;
+
+    for (int iSM_JMT = 0; iSM_JMT < SM_JetMET; iSM_JMT++){
+      if( max_weight_all[i_t_max][iSM_JMT][iPerm_max] > 0 ){
+        mom_top1.push_back( lvTop1[i_t_max][iSM_JMT][iPerm_max] );
+        mom_top2.push_back( lvTop2[i_t_max][iSM_JMT][iPerm_max] );
+        AMWTweight.push_back( max_weight_all[i_t_max][iSM_JMT][iPerm_max] );
+      }
+    }
+
+
+  }
+
+
+
+
+  //101026 work end
+
+  delete h_temp_MassWeight  ;
+  
+  if( SM_JetMET != 1 ) {
+  delete rand3;
+  delete ptResol; 
+  delete etaResol;
+  delete phiResol;
+  }
+
+  if(highestWeightCheck != 0) {
+    return high_weight_mass;
+  }
+  // fallback return value
+  return -999.;
+}
+
+
+
+#endif
+
+
+
+

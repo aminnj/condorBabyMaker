@@ -1,0 +1,24 @@
+/FactorizedJetCorrector.h/1.2/Sun Jun 12 21:50:39 2011//
+/FactorizedJetCorrector.icc/1.2/Sun Jun 12 21:50:39 2011//
+/JetCorrectionUncertainty.h/1.1/Thu Mar 29 11:56:08 2012//
+/JetCorrectionUncertainty.icc/1.2/Fri Mar 30 14:09:21 2012//
+/JetCorrectorParameters.h/1.2/Sun Jun 12 21:50:39 2011//
+/JetCorrectorParameters.icc/1.5/Mon Jan 28 23:44:27 2013//
+/START38_V13_AK5Calo_L2L3Residual.txt/1.1/Sat Nov 20 09:49:20 2010//
+/START38_V13_AK5Calo_L2Relative.txt/1.1/Sat Nov 20 09:49:20 2010//
+/START38_V13_AK5Calo_L3Absolute.txt/1.1/Sat Nov 20 09:49:20 2010//
+/START38_V13_AK5JPT_L2L3Residual.txt/1.1/Sat Nov 20 09:49:20 2010//
+/START38_V13_AK5JPT_L2Relative.txt/1.1/Sat Nov 20 09:49:20 2010//
+/START38_V13_AK5JPT_L3Absolute.txt/1.1/Sat Nov 20 09:49:20 2010//
+/START38_V13_AK5PF_L2L3Residual.txt/1.1/Sat Nov 20 09:49:20 2010//
+/START38_V13_AK5PF_L2Relative.txt/1.1/Sat Nov 20 09:49:20 2010//
+/START38_V13_AK5PF_L3Absolute.txt/1.1/Sat Nov 20 09:49:20 2010//
+/START38_V13_AK5TRK_L2Relative.txt/1.1/Sat Nov 20 09:49:20 2010//
+/START38_V13_AK5TRK_L3Absolute.txt/1.1/Sat Nov 20 09:49:20 2010//
+/SimpleJetCorrectionUncertainty.h/1.1/Thu Mar 29 11:56:08 2012//
+/SimpleJetCorrectionUncertainty.icc/1.2/Fri Mar 30 14:09:21 2012//
+/SimpleJetCorrector.h/1.1/Fri Jul  9 12:20:21 2010//
+/SimpleJetCorrector.icc/1.1/Fri Jul  9 12:20:21 2010//
+/Utilities.icc/1.4/Sat Apr 28 19:05:59 2012//
+D/data////
+D/jetCorrectionFiles////
