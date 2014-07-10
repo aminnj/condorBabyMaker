@@ -66,7 +66,7 @@ void babyMaker::ScanChain(TChain* chain, std::string baby_name, bool isMC) {
       //analysis
      
      // loose cuts to make baby smaller 
-      if(evt_pfmet_type1cor() < 10.0) continue;
+      if(evt_pfmet_type1cor() < 20.0) continue;
       if(els_p4().size() + mus_p4().size() < 3) continue;
 
       pfmet = evt_pfmet();
