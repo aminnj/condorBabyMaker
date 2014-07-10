@@ -47,6 +47,10 @@ class babyMaker {
   unsigned int lumiBlock;
   unsigned int run;
 
+  bool dielectronTrigger;
+  bool dimuonTrigger;
+  bool electronmuonTrigger;
+
   std::vector<LorentzVector> els_p4_b;
   std::vector<LorentzVector> mus_p4_b;
   std::vector<LorentzVector> pfjets_p4_b;
@@ -85,6 +89,10 @@ void babyMaker::MakeBabyNtuple(const char *BabyFilename){
   BabyTree_->Branch("evt_event", &event );
   BabyTree_->Branch("evt_lumiBlock", &lumiBlock );
   BabyTree_->Branch("evt_run", &run );
+
+  BabyTree_->Branch("dielectronTrigger", &dielectronTrigger );
+  BabyTree_->Branch("dimuonTrigger", &dimuonTrigger );
+  BabyTree_->Branch("electronmuonTrigger", &electronmuonTrigger );
   
   BabyTree_->Branch("els_p4", &els_p4_b );
   BabyTree_->Branch("mus_p4", &mus_p4_b );
@@ -113,6 +121,10 @@ void babyMaker::InitBabyNtuple () {
   event = 999;
   lumiBlock = 999;
   run = 999;
+
+  dielectronTrigger = false;
+  dimuonTrigger = false;
+  electronmuonTrigger = false;
 
   els_p4_b.clear();
   mus_p4_b.clear();

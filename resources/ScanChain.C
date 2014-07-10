@@ -80,6 +80,7 @@ void babyMaker::ScanChain(TChain* chain, std::string baby_name, bool isMC) {
       els_p4_b = els_p4();
       mus_p4_b = mus_p4();
       pfjets_p4_b = pfjets_p4();
+
      
       if(isMC) { 
           genmet = gen_met();
@@ -87,6 +88,11 @@ void babyMaker::ScanChain(TChain* chain, std::string baby_name, bool isMC) {
           genps_p4_b = genps_p4();
           genps_id_mother_b = genps_id_mother();
           genjets_p4_b = genjets_p4();  
+      } else {
+          dielectronTrigger = passHLTTrigger(TString("HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v19"));
+          dimuonTrigger = passHLTTrigger(TString("HLT_Mu17_Mu8_v22"));
+          electronmuonTrigger = passHLTTrigger(TString("HLT_Mu17_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v9")) ||
+                                passHLTTrigger(TString("HLT_Mu8_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v9"));
       }
 
       for(int iEl = 0; iEl < els_p4().size(); iEl++) {
