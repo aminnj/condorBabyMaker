@@ -55,7 +55,6 @@ echo ">>> Telling condor to use proxy file $proxyFile"
 cp -p ../$resources/condorFile .
 sed -i "s,PROXY_FILE,$proxyFile," condorFile
 
-return # FIXME
 echo ">>> Submitting $babyName"
 condor_submit condorFile
 
