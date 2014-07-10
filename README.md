@@ -1,11 +1,15 @@
 ## Instructions
 
+# todo
+get rid of single job submissions because you can submit a chunked jobs with numchunks=1
+keep single job script just in case chunk script breaks somehow
+
 # Single job submissions
 
 * Check out repository (obviously)
 * Modify ScanChain.C and ScanChain.h in the `resources` folder.
 * Then do:
-```. create.sh [MC/data] [input folder] [baby name]```
+```. create.sh [MC/data] [input files] [baby name]```
 
 For example, consider 
 ```. create.sh Data "/hadoop/cms/store/group/snt/papers2012/Data2012/CMSSW_5_3_2_patch4_V05-03-24/DoubleMu_Run2012C-PromptReco-v2_AOD/merged/*.root" baby_DoubleMu_Run2012C_VN1```
