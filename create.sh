@@ -1,5 +1,5 @@
 if [ $# -ne 3 ]; then
-    echo "Usage: . create.sh [MC/data] [folder name] [baby name]"
+    echo "Usage: . create.sh [MC/data] [input folder name] [baby name]"
     return
 fi
 
@@ -56,4 +56,6 @@ sed -i "s,PROXY_FILE,$proxyFile," condorFile
 
 echo ">>> Submitting $babyName"
 condor_submit condorFile
+
+cd ..
 
