@@ -1,17 +1,18 @@
 if [ $# -ne 3 ]; then
-    echo "Usage: . create.sh [MC/data] [input folder name] [baby name]"
+    echo "Usage: . create.sh [MC/data] [input files name] [baby name]"
+    echo "Note: quotes around the files prevents bash from expanding wildcards!"
     return
 fi
 
 isMC=$1
-inputFolder=$2
+inputFiles=$2
 babyName=$3
 resources="resources"
 
 
 echo ">>> MC or Data: $isMC"
 echo ">>> Baby name (and folder name): $babyName"
-echo ">>> Input folder: $inputFolder"
+echo ">>> Input files: $inputFiles"
 
 # die if no voms proxy
 vomsInfo=$(voms-proxy-info | grep "path")
@@ -46,7 +47,7 @@ fi
 sed -i "s/BABY_NAME/$babyName/g" doAll.C
 
 # substitute input file names
-sed -i "s,INPUT_NAMES,$inputFolder/*.root,g" doAll.C
+sed -i "s,INPUT_NAMES,$inputFiles,g" doAll.C # FIXME remove the 1
 
 # substitute voms proxy into condor submission file
 proxyFile=$(echo $vomsInfo | awk '{print $3}')
@@ -54,6 +55,7 @@ echo ">>> Telling condor to use proxy file $proxyFile"
 cp -p ../$resources/condorFile .
 sed -i "s,PROXY_FILE,$proxyFile," condorFile
 
+return # FIXME
 echo ">>> Submitting $babyName"
 condor_submit condorFile
 
