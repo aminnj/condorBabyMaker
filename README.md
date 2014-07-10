@@ -16,10 +16,9 @@ This tells the baby maker that it is data (so doesn't fill in gen information, d
 
 # Chunk submissions
 
-* Check out repository (obviously)
-* Modify ScanChain.C and ScanChain.h in the `resources` folder.
-* Then do:
-```. createChunks.sh ["MC"/"data"] [input file names] [baby/folder name] [num chunks]"```
+Read instructions for *Single job submissions*, noting the following changes.
+
+Format: ```. createChunks.sh ["MC"/"data"] [input file names] [baby/folder name] [num chunks]"```
 
 For example, consider
 ```
