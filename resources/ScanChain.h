@@ -39,6 +39,7 @@ class babyMaker {
 
   //baby ntuple variables
   float pfmet;
+  float metphi;
   float pfmet_type1cor;
   float genmet;
   float scale1fb;
@@ -82,6 +83,7 @@ void babyMaker::MakeBabyNtuple(const char *BabyFilename){
   BabyTree_ = new TTree("tree", "A Baby Ntuple");
 
   BabyTree_->Branch("pfmet", &pfmet );
+  BabyTree_->Branch("metphi", &metphi );
   BabyTree_->Branch("pfmet_type1cor", &pfmet_type1cor );
   BabyTree_->Branch("gen_met", &genmet );
   BabyTree_->Branch("evt_scale1fb", &scale1fb );
@@ -114,6 +116,7 @@ void babyMaker::MakeBabyNtuple(const char *BabyFilename){
 void babyMaker::InitBabyNtuple () {
 
   pfmet = -999.0;
+  metphi = -999.0;
   pfmet_type1cor = -999.0;
   genmet = -999.0;
   scale1fb = -999.0;

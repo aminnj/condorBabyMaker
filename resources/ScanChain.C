@@ -71,6 +71,7 @@ void babyMaker::ScanChain(TChain* chain, std::string baby_name, bool isMC) {
 
       pfmet = evt_pfmet();
       pfmet_type1cor = evt_pfmet_type1cor();
+      metphi = evt_metPhi();
       scale1fb = evt_scale1fb();
       isRealData = evt_isRealData();
       event = evt_event();
