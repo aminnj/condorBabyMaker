@@ -2,13 +2,8 @@
 
 # Chunk submissions
 
-Read instructions for *Single job submissions*, noting the following changes.
-
 * Modify ScanChain.C and ScanChain.h in the `resources` folder.
-* Then do:
-Format: ```. createChunks.sh ["mc"/"data"] [input file names] [baby/folder name] [num chunks]"```
-
-For example, consider
+* Then do something like this, for example:
 ```
 . createChunks.sh mc "/hadoop/cms/store/group/snt/papers2012/Summer12_53X_MC/DYJetsToLL_M-50_TuneZ2Star_8TeV-madgraph-tarball_Summer12_DR53X-PU_S10_START53_V7A-v1/V05-03-23/*.root" baby_DYJetsToLL_V1 10
 ```
