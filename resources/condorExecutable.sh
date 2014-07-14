@@ -6,6 +6,9 @@ uname -a
 echo "initial files"
 ls -l
 
+job=$1
+echo $job
+
 #This stuff to get it to run
 export CMS_PATH=/code/osgcode/cmssoft/cms
 source /code/osgcode/cmssoft/cmsset_default.sh
@@ -28,8 +31,8 @@ echo $CMSSW_RELEASE_BASE
 # copy files into CMSSW_.../src directory
 cp -rp ../../CORE .
 cp -p ../../ScanChain.{C,h} .
-cp -p ../../doAll.C .
-root -b -q -n -l doAll.C
+cp -p ../../doAll_${job}.C .
+root -b -q -n -l doAll_${job}.C
 echo "files after running root"
 ls -l
 

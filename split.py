@@ -28,15 +28,13 @@ universe = vanilla
 Executable = CONDOR_EXECUTABLE
 Should_Transfer_Files = YES
 WhenToTransferOutput = ON_EXIT
-Transfer_Input_Files = ScanChain.C,ScanChain.h,doAll.C,CORE
-Output = out.stdout
-Error = out.stderr
-Log = out.log
+Output = out.stdout.$(Process)
+Error = out.stderr.$(Process)
+Log = out.log.$(Process)
 +DESIRED_Sites="UCSD"
 +Owner = undefined
 notify_user = dummymail000@FNAL.GOV
 x509userproxy = PROXY_FILE
-Queue 1
 """
 doAllStrBegin = """
 {
@@ -58,30 +56,38 @@ doAllStrEnd = """
 doAllStrEnd = doAllStrEnd.replace("IS_MC", str(isMC).lower())
 condorFileStr = condorFileStr.replace("PROXY_FILE", proxyFile)
 
+folderName = babyName
+condorName = babyName + ".sh"
+os.system("mkdir -p %s" % folderName)
+
+fcondorFile = open("%s/condorFile" % folderName, "w")
+fcondorFile.write( condorFileStr.replace("CONDOR_EXECUTABLE", condorName) )
+
+os.system("cp -p %s/ScanChain.* %s/" % (resources, folderName))
+os.system("cp -rp %s/CORE %s/" % (resources, folderName))
+os.system("cp -p %s/condorExecutable.sh %s/%s" % (resources, folderName, condorName))
+
 for chunk in range(numChunks):
-    folderName = babyName + "_" + str(chunk).zfill(3)
-    condorName = babyName + "_" + str(chunk).zfill(3) + ".sh"
 
-    print ">>> Making", folderName, "for chunk",chunk,"with",len(chunks(files,numChunks)[chunk]),"files"
-    os.system("mkdir -p %s" % folderName)
-    os.system("cp -p %s/ScanChain.* %s/" % (resources, folderName))
-    os.system("cp -rp %s/CORE %s/" % (resources, folderName))
-    os.system("cp -p %s/condorExecutable.sh %s/%s" % (resources, folderName, condorName))
+    doAllName = "doAll_%i.C" % chunk
+    print ">>> Making", doAllName, "for chunk",chunk,"with",len(chunks(files,numChunks)[chunk]),"files"
 
-    fdoAll = open("%s/doAll.C" % folderName, "w")
-    fcondorFile = open("%s/condorFile" % folderName, "w")
+    fdoAll = open("%s/%s" % (folderName, doAllName), "w")
 
     fdoAll.write( doAllStrBegin )
     for fileName in chunks(files, numChunks)[chunk]:
         fdoAll.write( "    ch->Add(\"%s\");\n" % fileName )
-    fdoAll.write( doAllStrEnd.replace("BABY_NAME", folderName) )
+    fdoAll.write( doAllStrEnd.replace("BABY_NAME", folderName+"_"+str(chunk)) )
 
-    fcondorFile.write( condorFileStr.replace("CONDOR_EXECUTABLE", condorName) )
-    print ">>> Made", folderName
+    fcondorFile.write( "\n\n" )
+    fcondorFile.write( "Transfer_Input_Files = ScanChain.C,ScanChain.h,%s,CORE\n" % doAllName )
+    fcondorFile.write( "Arguments = %i\n" % chunk )
+    fcondorFile.write( "Queue 1\n" )
 
     fdoAll.close()
-    fcondorFile.close()
-    print ">>> Submitting", folderName
-    os.system("(cd %s && condor_submit condorFile)" % folderName)
 
+fcondorFile.close()
+
+print ">>> Submitting", folderName
+os.system("(cd %s && condor_submit condorFile)" % folderName)
 
