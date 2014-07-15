@@ -3,7 +3,7 @@ You could use root interactively to make a baby ntuple in the foreground, but
 that uses one terminal instance. Instead, you could just run it in the
 background, even multiple times.
 
-OR, you can use this to submit tens or hundreds of jobs to condor to make the
+*OR*, you can use this to submit tens or hundreds of jobs to condor to make the
 babies for you in parallel.
 
 ## Instructions for Chunk submissions
@@ -38,5 +38,5 @@ one `.root` file. In thise case, you could do:
 hadd baby_DoubleMu_Run2012C_VN1.root baby_DoubleMu_Run2012C_VN1_*.root
 ```
 
-(The python helper script splits up the `.root` files into approximately equal
+(The heavy-lifter python script splits up the `.root` files into approximately equal
 chunks where the number of chunks is specified by user.)
