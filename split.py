@@ -91,3 +91,4 @@ fcondorFile.close()
 print ">>> Submitting", folderName
 os.system("(cd %s && condor_submit condorFile)" % folderName)
 
+print ">>> Done"
