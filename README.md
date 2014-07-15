@@ -1,6 +1,6 @@
-# Chunk submissions
+# Instructions
 
-## Instructions
+## Chunk submissions
 
 * Modify `ScanChain.C` and `ScanChain.h` in the `resources` folder. Keep those filenames the same. `CORE` can also be swapped out for a newer version.
 * Source `createChunks.sh` with no parameters for argument hints.
