@@ -3,7 +3,16 @@
 # Chunk submissions
 
 * Modify `ScanChain.C` and `ScanChain.h` in the `resources` folder. Keep those filenames the same. `CORE` can also be swapped out for a newer version.
+* Source `createChunks.sh` with no parameters for argument hints.
+
+```
+$ . createChunks.sh
+Usage: . createChunks.sh ["MC"/"data"] [input file names] [baby/folder name] [num chunks]
+Note: quotes around the files prevents bash from expanding wildcards!
+
+```
 * Then do something like this, for example:
+
 ```
 . createChunks.sh mc "/hadoop/cms/store/group/snt/papers2012/Summer12_53X_MC/DYJetsToLL_M-50_TuneZ2Star_8TeV-madgraph-tarball_Summer12_DR53X-PU_S10_START53_V7A-v1/V05-03-23/*.root" baby_DYJetsToLL_V1 10
 ```
@@ -18,6 +27,7 @@ with 10 processes submitted. Finally, the output baby `.root` files will have
 the names `baby_DoubleMu_Run2012C_VN1_#_Data.root` where `#` corresponds to the
 process number. Afterwards, you can use the `hadd` command to combine them into
 one `.root` file. In thise case, you could do:
+
 ```
 hadd baby_DoubleMu_Run2012C_VN1.root baby_DoubleMu_Run2012C_VN1_*.root
 ```
