@@ -1,6 +1,12 @@
-# Instructions
+## Purpose
+You could use root interactively to make a baby ntuple in the foreground, but
+that uses one terminal instance. Instead, you could just run it in the
+background, even multiple times.
 
-## Chunk submissions
+OR, you can use this to submit tens or hundreds of jobs to condor to make the
+babies for you in parallel.
+
+## Instructions for Chunk submissions
 
 * Modify `ScanChain.C` and `ScanChain.h` in the `resources` folder. Keep those filenames the same. `CORE` can also be swapped out for a newer version.
 * Source `createChunks.sh` with no parameters for argument hints.
