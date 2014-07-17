@@ -69,6 +69,8 @@ class babyMaker {
 
   std::vector<float> corL1FastL2L3;
 
+  std::string filename;
+
 };
 
 #endif
@@ -109,6 +111,8 @@ void babyMaker::MakeBabyNtuple(const char *BabyFilename){
   BabyTree_->Branch("tightMu", &tightMu );
   BabyTree_->Branch("passesLoosePFJetID", &passesLoosePFJetID_b );
   BabyTree_->Branch("pfjets_corL1FastL2L3", &corL1FastL2L3 );
+
+  BabyTree_->Branch("filename", &filename );
    
   return;
 }
@@ -145,6 +149,8 @@ void babyMaker::InitBabyNtuple () {
   passesLoosePFJetID_b.clear();
 
   corL1FastL2L3.clear();
+
+  filename = "";
   
   return;
 }
