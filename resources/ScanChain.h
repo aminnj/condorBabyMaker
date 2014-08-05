@@ -48,6 +48,8 @@ class babyMaker {
   unsigned int lumiBlock;
   unsigned int run;
 
+  unsigned int nvtxs;
+
   bool dielectronTrigger;
   bool dimuonTrigger;
   bool electronmuonTrigger;
@@ -66,6 +68,7 @@ class babyMaker {
   std::vector<bool> tightEl;
   std::vector<bool> tightMu;
   std::vector<bool> passesLoosePFJetID_b;
+  std::vector<float> pfjets_combinedSecondaryVertexBJetTag_b;
 
   std::vector<float> corL1FastL2L3;
 
@@ -93,6 +96,7 @@ void babyMaker::MakeBabyNtuple(const char *BabyFilename){
   BabyTree_->Branch("evt_event", &event );
   BabyTree_->Branch("evt_lumiBlock", &lumiBlock );
   BabyTree_->Branch("evt_run", &run );
+  BabyTree_->Branch("evt_nvtxs", &nvtxs );
 
   BabyTree_->Branch("dielectronTrigger", &dielectronTrigger );
   BabyTree_->Branch("dimuonTrigger", &dimuonTrigger );
@@ -111,6 +115,7 @@ void babyMaker::MakeBabyNtuple(const char *BabyFilename){
   BabyTree_->Branch("tightMu", &tightMu );
   BabyTree_->Branch("passesLoosePFJetID", &passesLoosePFJetID_b );
   BabyTree_->Branch("pfjets_corL1FastL2L3", &corL1FastL2L3 );
+  BabyTree_->Branch("pfjets_combinedSecondaryVertexBJetTag", &pfjets_combinedSecondaryVertexBJetTag_b );
 
   BabyTree_->Branch("filename", &filename );
    
@@ -128,6 +133,7 @@ void babyMaker::InitBabyNtuple () {
   event = 999;
   lumiBlock = 999;
   run = 999;
+  nvtxs = 999;
 
   dielectronTrigger = false;
   dimuonTrigger = false;
@@ -147,6 +153,7 @@ void babyMaker::InitBabyNtuple () {
   tightEl.clear();
   tightMu.clear();
   passesLoosePFJetID_b.clear();
+  pfjets_combinedSecondaryVertexBJetTag_b.clear();
 
   corL1FastL2L3.clear();
 

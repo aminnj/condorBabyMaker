@@ -67,19 +67,21 @@ void babyMaker::ScanChain(TChain* chain, std::string baby_name, bool isMC) {
             //analysis
 
             // loose cuts to make baby smaller 
-            if(evt_pfmet_type1cor() < 25.0) continue;
+            if(evt_pfmet_type1cor() < 20.0) continue;
             if(els_p4().size() + mus_p4().size() < 3) continue;
 
             filename = currentFile->GetTitle();
 
             pfmet = evt_pfmet();
             pfmet_type1cor = evt_pfmet_type1cor();
-            metphi = evt_metPhi();
+            metphi = evt_pfmetPhi_type1cor();
             scale1fb = evt_scale1fb();
             isRealData = evt_isRealData();
             event = evt_event();
             lumiBlock = evt_lumiBlock();
             run = evt_run();
+
+            nvtxs = evt_nvtxs();
 
 
             if(isMC) { 
@@ -129,6 +131,7 @@ void babyMaker::ScanChain(TChain* chain, std::string baby_name, bool isMC) {
                 if (pfjets_p4().at(iJet).pt()*pfjets_corL1FastL2L3().at(iJet) < 25) continue;
 
                 passesLoosePFJetID_b.push_back( passesLoosePFJetID(iJet) );
+                pfjets_combinedSecondaryVertexBJetTag_b.push_back( pfjets_combinedSecondaryVertexBJetTag().at(iJet) );
                 corL1FastL2L3.push_back( pfjets_corL1FastL2L3().at(iJet) );
                 pfjets_p4_b.push_back(pfjets_p4().at(iJet));
             }
